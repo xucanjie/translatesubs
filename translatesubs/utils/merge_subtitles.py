@@ -109,7 +109,7 @@ def translate_use_chatGPT(subtitles, language='Chinese') -> List[str]:
 
     count = 2
     while count > 0:
-        '''
+
         response = client.chat.completions.create(
             model="deepseek-chat",
             messages=[
@@ -119,28 +119,31 @@ def translate_use_chatGPT(subtitles, language='Chinese') -> List[str]:
             stream=False
         )
         text = response.choices[0].message.content
-        '''
-        text = '''```json
-["嘿，伙计们。帮帮我。", "我需要给我的乐队起个名字。", "脏海绵？", "空杯子。", "你们说的是眼前的东西。", "没有乐队名字的女孩？", "那不错。", "那不错。", "看看这个，同胎兄弟们。", "为了庆祝我们的十岁生日，"]
-```
-'''
-        print(text)
+
+
         try:
             t = re.findall(r'```json\n?(.+)\n?```', text, re.DOTALL)
+            if t[0]:
+                try:
+                    k = json.loads(t[0])
+                except:
+                    count -= 1
+                    continue
+                if len(k) != h+1:
+                    print("翻译行数不对，请重新翻译")
+                    count -= 1
+                return k
+            else:
+                count -= 1
         except:
-            t = [t]
-        if t[0]:
             try:
-                k = json.loads(t[0])
+                t = json.loads(text)
+                if len(t) != h+1:
+                    print("翻译行数不对，请重新翻译")
+                    count -= 1
+                return t
             except:
                 count -= 1
-                continue
-            if len(k) != h+1:
-                print("翻译行数不对，请重新翻译")
-                count -= 1
-            return k
-        else:
-            count -= 1
     return []
 
 
@@ -159,16 +162,21 @@ if __name__ == '__main__':
     for i in get_batches(read_subtitles(input_file)):
         e = i['current_batch']
         rs = translate_use_chatGPT(i)
-        if len(rs) > 0:
+
+        if len(rs) > 0 and len(rs) == len(e):
             for index,k in enumerate(rs):
-                #l = e[index][0]+','+ e[index][1] + afterstyle(k) + '\n'
-                l = e[index][0]+','+ k + '\n'
-                lines.append(l)
+                print(index, k)
+                try:
+                    l = e[index][0]+','+ e[index][1] + afterstyle(k) + '\n'
+                    #l = e[index][0]+','+ k + '\n'
+                    lines.append(l)
+                except:
+                    print(index,k, e)
+                print(l)
         else:
             for ori in e:
                 l = ori[0] + ',' + ori[1] + '\n'
                 lines.append(l)
-        break
     print(lines)
     with open(output_file, 'w',encoding='utf-8') as f:
         f.writelines(lines)
