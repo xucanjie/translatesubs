@@ -4,6 +4,7 @@ import subprocess
 from typing import List
 from openai import OpenAI
 import os
+import tempfile
 
 def merge_subtitles(input_file, output_file):
     with open(input_file, 'r', encoding='utf-8') as f:
@@ -43,11 +44,14 @@ def merge_subtitles(input_file, output_file):
 
 
 def extract_from_video_mkv(video_in: str, subs_track: int, subs_out: str) -> bool:
-    tmp_file = 'tmp_' + subs_out
+    base_name = os.path.basename(subs_out)
+    print(base_name)
+    tmp_file = f'tmp_{base_name}.ass'
     operation = ['ffmpeg', '-i', video_in, '-map', f'0:s:{subs_track}', tmp_file]
     print(operation)
     status = subprocess.run(operation)
     merge_subtitles(tmp_file, subs_out)
+    os.remove(tmp_file)
     return status.returncode == 0
 
 
@@ -83,6 +87,11 @@ def afterstyle(text: str, scale: int = 80, alpha: int = 50) -> str:
     open_style = f'\\N{{\\fscx{scale}\\fscy{scale}\\alpha&H{alpha_hex}&}}'
     close_style = '\\N{\\fscx100\\fscy100\\alpha&H00&}'
     return f'{open_style}{text}{close_style}'
+
+
+def remove_numbers(s):
+    # 使用正则表达式匹配以数字和冒号开头的部分
+    return re.sub(r'^\d+:\s*', '', s, flags=re.MULTILINE)
 
 #chatGPT
 def translate_use_chatGPT(subtitles, language='Chinese') -> List[str]:
@@ -132,7 +141,7 @@ def translate_use_chatGPT(subtitles, language='Chinese') -> List[str]:
                 if len(k) != h+1:
                     print("翻译行数不对，请重新翻译")
                     count -= 1
-                return k
+                return [remove_numbers(s) for s in k]
             else:
                 count -= 1
         except:
@@ -141,42 +150,49 @@ def translate_use_chatGPT(subtitles, language='Chinese') -> List[str]:
                 if len(t) != h+1:
                     print("翻译行数不对，请重新翻译")
                     count -= 1
-                return t
+                return [remove_numbers(s) for s in t]
             except:
                 count -= 1
     return []
 
+def generate_subtitle_file(directory):
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.endswith('.mkv'):
+                base_name = os.path.splitext(file)[0]
+                mkv_file_path = os.path.join(root, file)
+                subtitle_file_path = os.path.join(root, f'{base_name}.ass')
+                tmpsubfile = os.path.join(root, f'tmp_{base_name}.ass')
+                extract_from_video_mkv(mkv_file_path,0, tmpsubfile)
+                lines = []
+                with open(tmpsubfile, 'r', encoding='utf-8') as f:
+                        for line in f:
+                            if line.startswith('Dialogue: '):
+                                continue
+                            lines.append(line)
+                for i in get_batches(read_subtitles(tmpsubfile)):
+                    e = i['current_batch']
+                    rs = translate_use_chatGPT(i)
+                    if len(rs) > 0 and len(rs) == len(e):
+                        for index, k in enumerate(rs):
+                            print(index, k)
+                            try:
+                                l = e[index][0] + ',' + e[index][1] + afterstyle(k) + '\n'
+                                # l = e[index][0]+','+ k + '\n'
+                                lines.append(l)
+                            except:
+                                print(index, k, e)
+                            print(l)
+                    else:
+                        for ori in e:
+                            l = ori[0] + ',' + ori[1] + '\n'
+                            lines.append(l)
+                print(lines)
+                with open(subtitle_file_path, 'w', encoding='utf-8') as f:
+                    f.writelines(lines)
+                os.remove(tmpsubfile)
+
 
 if __name__ == '__main__':
-    mkv_file = '/Users/xucanjie/Downloads/Nicky.Ricky.Dicky.And.Dawn.S01E02.1080p.NF.WEB-DL.DDP2.0.x264-LAZY.mkv'
-    input_file = 'input_subtitle_file.ass'  # Update this to your actual input file path
-    output_file = 'merged_subtitle_file.ass'  # Update this to your desired output file path
-    #extract_from_video_mkv(mkv_file, 0, input_file)
-    #print(read_subtitles(input_file))
-    lines = []
-    with open(input_file, 'r', encoding='utf-8') as f:
-        for line in f:
-            if line.startswith('Dialogue: '):
-                continue
-            lines.append(line)
-    for i in get_batches(read_subtitles(input_file)):
-        e = i['current_batch']
-        rs = translate_use_chatGPT(i)
-
-        if len(rs) > 0 and len(rs) == len(e):
-            for index,k in enumerate(rs):
-                print(index, k)
-                try:
-                    l = e[index][0]+','+ e[index][1] + afterstyle(k) + '\n'
-                    #l = e[index][0]+','+ k + '\n'
-                    lines.append(l)
-                except:
-                    print(index,k, e)
-                print(l)
-        else:
-            for ori in e:
-                l = ori[0] + ',' + ori[1] + '\n'
-                lines.append(l)
-    print(lines)
-    with open(output_file, 'w',encoding='utf-8') as f:
-        f.writelines(lines)
+    import sys
+    generate_subtitle_file(".")
