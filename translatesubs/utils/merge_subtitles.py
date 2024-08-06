@@ -177,6 +177,7 @@ def translate_use_llm(subtitles, language='Chinese', count=2, llm='deepseek') ->
                 if len(k) != h + 1:
                     print("翻译行数不对，请重新翻译")
                     count -= 1
+                    continue
                 return [remove_numbers(s) for s in k]
             else:
                 count -= 1
