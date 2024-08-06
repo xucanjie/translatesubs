@@ -181,7 +181,7 @@ def translate_use_llm(subtitles, language='Chinese', count=2, llm='deepseek') ->
             else:
                 count -= 1
         except:
-            count -= 1
+            pass
         count -= 1
         return []
 
