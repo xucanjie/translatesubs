@@ -122,6 +122,20 @@ def chat_with_qwen2(system_prompt, user_prompt) -> str:
     text = response.choices[0].message.content
     return text
 
+def chat_with_OpenAi(system_prompt, user_prompt) -> str:
+    api_key = os.getenv("R_OPENAI_API_KEY")
+    client = OpenAI(api_key=api_key)
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        stream=False
+    )
+    text = response.choices[0].message.content
+    return text
+
 #qwen2
 def translate_use_llm(subtitles, language='Chinese', count=2, llm='deepseek') -> List[str]:
     system_prompt = f'你是一个专业的字幕翻译员，你的任务是将以下英文字幕翻译成{language}, 你需要根据上下文进行翻译。'
@@ -147,6 +161,8 @@ def translate_use_llm(subtitles, language='Chinese', count=2, llm='deepseek') ->
             text = chat_with_qwen2(system_prompt, prompt)
         if llm == 'deepseek':
             text = chat_with_deepseek(system_prompt, prompt)
+        if llm == 'gpt4omini':
+            text = chat_with_OpenAi(system_prompt, prompt)
         print(text)
         try:
             pattern = r"^.*?(\[.*\]).*$"
