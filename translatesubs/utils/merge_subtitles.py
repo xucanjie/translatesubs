@@ -95,7 +95,7 @@ def remove_numbers(s):
 
 
 def chat_with_deepseek(system_prompt, user_prompt) -> str:
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = os.getenv("DEEP_OPENAI_API_KEY")
     client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
     response = client.chat.completions.create(
         model="deepseek-chat",
@@ -123,7 +123,7 @@ def chat_with_qwen2(system_prompt, user_prompt) -> str:
     return text
 
 def chat_with_OpenAi(system_prompt, user_prompt) -> str:
-    api_key = os.getenv("R_OPENAI_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY")
     client = OpenAI(api_key=api_key)
     response = client.chat.completions.create(
         model="gpt-4o-mini",
