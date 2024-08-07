@@ -81,10 +81,10 @@ def get_batches(subtitles, batch_size=10):
 open_style = ''
 close_style = ''
 
-def afterstyle(text: str, scale: int = 80, alpha: int = 50) -> str:
+def afterstyle(text: str, scale: int = 80, alpha: int = 45) -> str:
     alpha_scale = round(alpha * 2.55)
     alpha_hex = f'{alpha_scale:x}'
-    open_style = f'\\N{{\\fscx{scale}\\fscy{scale}\\alpha&H{alpha_hex}&}}'
+    open_style = f'\\N{{\\c&H00D7FF&\\fscx{scale}\\fscy{scale}\\alpha&H{alpha_hex}&}}'
     close_style = '\\N{\\fscx100\\fscy100\\alpha&H00&}'
     return f'{open_style}{text}{close_style}'
 
@@ -164,27 +164,22 @@ def translate_use_llm(subtitles, language='Chinese', count=2, llm='deepseek') ->
         if llm == 'gpt4omini':
             text = chat_with_OpenAi(system_prompt, prompt)
         print(text)
-        try:
-            pattern = r"^.*?(\[.*\]).*$"
-            matches = re.findall(pattern, text, re.DOTALL)
-            print(matches)
-            if matches:
-                try:
-                    k = json.loads(matches[0])
-                except:
-                    count -= 1
-                    continue
-                if len(k) != h + 1:
+        pattern = r"^.*?(\[.*\]).*$"
+        matches = re.findall(pattern, text, re.DOTALL)
+
+        if matches:
+            try:
+                k = json.loads(matches[0])  # Attempt to parse the JSON
+                if len(k) == h + 1:  # Check if the translation has the expected number of lines
+                    return [remove_numbers(s) for s in k]
+                else:
                     print("翻译行数不对，请重新翻译")
-                    count -= 1
-                    continue
-                return [remove_numbers(s) for s in k]
-            else:
-                count -= 1
-        except:
-            pass
+            except json.JSONDecodeError:
+                print("JSON decoding failed, retrying...")
+
+        # Reduce the count and retry
         count -= 1
-        return []
+    return []
 
 
 
